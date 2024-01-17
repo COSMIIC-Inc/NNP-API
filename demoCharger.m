@@ -1,5 +1,5 @@
 % This file demonstrates a closed loop algorithm, where MATLAB controls the COSMIIC CHarger
-% If VREC is insufficient but temperatures are 
+
 
 %% Auto tune coil frequency based on current
 % coil should NOT be coupled to PM
@@ -146,41 +146,26 @@ while true
         str1 = sprintf('%s %4.1fV  %4.1fC', strPM, vrec, tempPM);
         %nnp.setChargerDisplay(str1);
         cnt = cnt+1;
-        if cnt>5
+        if cnt>2
             dispCnt = dispCnt+1;
             if dispCnt>5
                 dispCnt = 1;    
             end
             cnt = 0;
         
-           
-%         switch dispCnt
-%             case 1
-%                 str1 = sprintf('%s  VREC:%4.1fV', strPM, vrec);
-%                 str2 = sprintf('         TEMP:%4.1fC', tempPM);
-%             case 2
-%                 str1 = sprintf('TARGET:      %5.1fmA', targ);
-%                 str2 = sprintf('BAT1: %5.3fV %5.1fmA', batV(1),batI(1));
-%             case 3
-%                 str1 = sprintf('BAT2: %5.3fV %5.1fmA', batV(2), batI(2));
-%                 str2 = sprintf('BAT3: %5.3fV %5.1fmA', batV(3), batI(3));
-%             case 4
-%                 str1 = sprintf('COIL: %4.1fC    %4.1fC', tempCoilSkin, tempCoilTop);
-%                 str2 = sprintf(' %4.2fV  %4.2fA  %4.1fC', chargerV, chargerI, tempCharger);
-%                 dispCnt = 0;
-
-       
 
         switch dispCnt
             case 1
-                str2 = sprintf('BAT1: %5.3fV %5.1fmA', batV(1),batI(1));
+                str2 = sprintf('TARGET:      %5.1fmA', targ);
             case 2
-                str2 = sprintf('BAT2: %5.3fV %5.1fmA', batV(2), batI(2));
+                str2 = sprintf('BAT1: %5.3fV %5.1fmA', batV(1),batI(1));
             case 3
-                str2 = sprintf('BAT3: %5.3fV %5.1fmA', batV(3), batI(3));
+                str2 = sprintf('BAT2: %5.3fV %5.1fmA', batV(2), batI(2));
             case 4
-                str2 = sprintf('COIL: %4.1fC    %4.1fC', tempCoilSkin, tempCoilTop);
+                str2 = sprintf('BAT3: %5.3fV %5.1fmA', batV(3), batI(3));
             case 5
+                str2 = sprintf('COIL: %4.1fC    %4.1fC', tempCoilSkin, tempCoilTop);
+            case 6
                 str2 = sprintf('COIL: %4.2fV    %4.2fA', chargerV, chargerI);
                 
         end
