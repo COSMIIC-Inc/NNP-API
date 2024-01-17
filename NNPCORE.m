@@ -97,7 +97,7 @@ classdef NNPCORE < handle
                 NNP.mutexAP = false;
                 NNP.lastError = [];
             catch
-                msgbox(sprintf('Failed to refresh Access Point port (%s).', NNP.port.Port));
+                msgbox(sprintf('Failed to refresh Access Point port'));
                 NNP.lastError = 'Serial Port';
             end
         end
@@ -168,17 +168,21 @@ classdef NNPCORE < handle
                         if NNP.verbose == 2
                             disp(['Response: ' num2str(resp,' %02X')]);
                         end
-                    elseif resp(2) == 14
+                    elseif resp(2) == 13 %0x0D
                         NNP.lastError = 'Radio Timeout';
-                    %Other interpreted errors here
+                    elseif resp(2) == 11 %0x0B
+                        NNP.lastError = 'Invalid packet length';
                     else
+                        NNP.lastError = ['Unknown: ', num2str(resp(2),' %02X')]
                     end
                 elseif NNP.verbose > 0
                     disp(['Bad Response from Access Point: ' num2str(resp', ' %02X')]);
                     NNP.lastError = 'Bad Response';
                 end
-            elseif NNP.verbose > 0
-               disp('No Response from Access Point');   
+            else
+               if NNP.verbose > 0
+                disp('No Response from Access Point');   
+               end
                NNP.lastError = 'USB timeout';
             end
 
@@ -444,6 +448,9 @@ classdef NNPCORE < handle
                     dataRX = payload(8:end-2);
                     errOut = 0; 
                 end
+            elseif isempty(payload)
+                errOut = 3;
+                %NNP.lastError = 'Radio Timeout';  %NNP.lastError already set by transmitAP
             else
                 if NNP.verbose > 0
                     disp(['Short message: ', num2str(payload(1:end-2), ' %02X')]);
