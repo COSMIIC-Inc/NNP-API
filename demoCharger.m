@@ -27,8 +27,7 @@ nnp.setChargerDisplay('Optimal Coil Freq: ',[num2str(optfreq, '%4.0f') 'Hz']);
 pause(1)
 nnp.setChargerCoilFreq(optfreq);
 
-
-
+%%
 timeout = 30;  %in seconds
 tempPMinvalid = 0;
 lastupdate = tic;
@@ -188,3 +187,111 @@ end
 %     nnp.setChargerDisplay('   MATLAB ','    ERROR!');
 %     nnp.stopCoil();
 % end
+
+%%
+
+usecurrent = 1;
+if usecurrent
+    maxcurrent = 1.32;  %uncoupled  (calibrate this if desired)
+    mincurrent = 1;     %best coupling (calibrate this if desired)
+else
+     minvrec = 6;      %poor coupling (calibrate this if desired)
+     maxvrec = 15;     %best coupling (calibrate this if desired)
+    nnp.write(7, '3000', 11, 0, 'uint8'); %set charging rate to zero so VREC fluctuates based on coupling only
+end
+
+%% Beep rate 
+ usecurrent = 1
+
+mincurrent = 1.1;
+chargerV = nnp.setChargerVoltage(5.0);
+nnp.startCoil();
+couplingtimer = tic;
+nnp.setChargerAudioFreq(300);
+while toc(couplingtimer) < 30
+    if usecurrent
+        iCharger = nnp.getChargerCurrent()
+        t = (iCharger-mincurrent)*4;
+    else
+        vrec = double(nnp.read(7, '3000', 7, 'uint16'))/10;
+        if ~isempty(vrec)
+            t = -(vrec-maxvrec)/40
+        end
+    end
+    
+    nnp.startAudio();
+    pause(0.1)
+    if t > 0
+        nnp.stopAudio();
+        pause(t)
+    end
+end
+nnp.stopAudio();
+nnp.stopCoil();
+
+%%
+    nnp.setChargerAudioFreq(100);
+    nnp.startAudio();
+    %%  Note-based
+   %half steps
+notes  =[130.81 138.59 146.83 155.56 164.81 174.61 185  196 207.65 220 233.08 246.94 ...
+        261.63  277.18 293.66 311.13 329.63 349.23 369.99 392 415.3 440 466.16 493.88 ...
+        523.25 554.37 587.33 622.25 659.25 698.46 739.99 783.99 830.61 880 932.33 987.77 ...
+        1046.5 1108.73 1174.66 1244.51 1318.51 1396.91 1479.98 1567.98 1661.22 1760 1864.66 1975.53 2093]
+
+%whole steps C scale
+notes = [130.81 146.83 164.81 174.61 196 220 246.94 ...
+        261.63 293.66 329.63 349.23 392 440 493.88 ...
+        523.25 587.33 659.25 698.46 783.99 880 987.77...
+        1046.5 1174.66 1318.51 1396.91 1567.98 1760 1975.53 2093]
+
+%arpegio
+notes = [130.81 164.81 196 ...
+        261.63  329.63 392 ...
+        523.25 659.25 783.99 ...
+        1046.5 1318.5 1567.98 2093]
+
+% Max coupling
+chargerV = nnp.setChargerVoltage(5.0);
+nnp.startCoil();
+usecurrent = 1;
+if usecurrent
+    D = length(notes)/(maxcurrent-mincurrent);
+else
+    D = length(notes)/(maxvrec-minvrec);
+end
+
+nnp.setChargerAudioFreq(minfreq);
+nnp.startAudio();
+couplingtimer = tic;
+while toc(couplingtimer) < 30
+    if usecurrent
+        iCharger = nnp.getChargerCurrent()
+        iNote = round(-(iCharger-maxcurrent)*D)
+        iNote = min(max(iNote, 1), length(notes));
+    
+        nnp.setChargerAudioFreq(notes(iNote));
+    else
+        vrec = double(nnp.read(7, '3000', 7, 'uint16'))/10;
+        if ~isempty(vrec)
+            iNote = round((vrec-minvrec)*D)
+            iNote = min(max(iNote, 1), length(notes));
+            nnp.setChargerAudioFreq(notes(iNote));
+        end
+    end
+    pause(0.1)
+end
+nnp.stopAudio();
+nnp.stopCoil();
+
+%%
+% nnp.setChargerAudioFreq(notes(1));
+% nnp.startAudio();
+for i = 1:length(notes)
+    nnp.setChargerAudioFreq(notes(i));
+    nnp.startAudio();
+    pause(0.2)
+    nnp.stopAudio();
+    pause(0.1)
+end
+nnp.stopAudio();
