@@ -67,7 +67,7 @@ while true
 
     % these messages should always get through, but should we check if they don't
     tempCharger = nnp.getChargerTemp;
-    tempCoilTop = nnp.getCoilTemp1;
+    tempCoilTop = 40; %nnp.getCoilTemp1;
     tempCoilSkin = nnp.getCoilTemp2;
     chargerI = nnp.getChargerCurrent;
 
@@ -147,7 +147,7 @@ while true
         cnt = cnt+1;
         if cnt>2
             dispCnt = dispCnt+1;
-            if dispCnt>5
+            if dispCnt>6
                 dispCnt = 1;    
             end
             cnt = 0;
@@ -171,6 +171,7 @@ while true
         
         end
         nnp.setChargerDisplay(str1,str2);
+        fprintf('\n%s %4.1fV  %4.1fC | TARGET: %5.1fmA | BAT1: %5.3fV %5.1fmA | BAT2: %5.3fV %5.1fmA | BAT3: %5.3fV %5.1fmA | COIL: %4.1fC %4.1fC %4.1fC %4.2fV %4.2fA', strPM, vrec, tempPM, targ, batV(1),batI(1),batV(2), batI(2), batV(3), batI(3), tempCoilSkin, tempCoilTop, tempCharger, chargerV, chargerI);
         pause(0.25)
         if targ > 0 
             nnp.setChargerLEDs(2, 2, 1);
