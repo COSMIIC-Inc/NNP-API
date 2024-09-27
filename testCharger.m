@@ -3,7 +3,7 @@
 %% Set the Charging Frequency 
 nnp.setChargerCoilFreq(3500); %freq in Hz
 %% Set the Charging Voltage
-nnp.setChargerVoltage(5.8); %Voltage in V
+nnp.setChargerVoltage(5); %Voltage in V
 %% Start the Coil
 nnp.startCoil();
 %% Stop the Coil

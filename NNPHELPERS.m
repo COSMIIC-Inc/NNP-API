@@ -295,6 +295,59 @@ classdef NNPHELPERS < NNPCORE
             status = double(NNP.read(7, '3004', 1));
         end
         
+        function [year, month, day, dow, hour, min, sec] = getTime(NNP)
+            % GETTIME Return node table and other PM status information 
+            year = [];
+            month = [];
+            day = [];
+            dow = [];
+            hour = [];
+            min = [];
+            sec = [];
+            t = NNP.read(7,'2004',1,2, 'uint32');
+            if length(t)==2
+                year = double( bitshift(bitand(t(1), hex2dec('ffff0000')), -16) );
+                month = double( bitshift(bitand(t(1), hex2dec('0000ff00')), -8) );
+                day = double( bitand(t(1), hex2dec('000000ff')) );
+                dow = double( bitshift(bitand(t(2), hex2dec('0f000000')), -24) );
+                hour = double( bitshift(bitand(t(2), hex2dec('0001f0000')), -16) );
+                min = double( bitshift(bitand(t(2), hex2dec('00003f00')), -8) );
+                sec = double( bitand(t(2), hex2dec('0000003f')) );
+            end
+        end
+
+        function success = setTime(NNP)
+            % GETTIME Return node table and other PM status information 
+            resp = NNP.nmt(7, '97'); %stop clock
+            if resp ~= hex2dec('97')
+                success = false;
+                return
+            end
+
+            dt = datetime;
+            
+            t=uint32([0 0]);
+            t(1) = bitshift(uint32(year(dt)), 16) + ...
+                   bitshift(uint32(month(dt)), 8) + ...
+                   uint32(day(dt));
+            t(2) = bitshift(uint32(weekday(dt)), 24) +...
+                   bitshift(uint32(hour(dt)), 16) + ...
+                   bitshift(uint32(minute(dt)), 8) + ...
+                   uint32(second(dt));
+            resp = NNP.write(7,'2004',1,t,2, 'uint32');
+            if resp ~= 0
+                success = false;
+                return
+            end
+
+            resp = NNP.nmt(7, '88'); %set/start clock
+            if resp ~= hex2dec('88')
+                success = false;
+                return
+            end
+            success = true;
+        end
+
         function [modes, temp, vsys, net, rssi, lqi, group, lpm] = getStatus(NNP, nodes)
         % GETSTATUS Return node table and other PM status information 
         % modes = GETSTATUS(NNP) returns entire node table (15 nodes)

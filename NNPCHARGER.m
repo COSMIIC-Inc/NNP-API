@@ -3,7 +3,8 @@ classdef NNPCHARGER < NNPHELPERS
     %   
 
    properties (Access = public)
-        chargerFreqDivider = 8000000;
+        %chargerFreqDivider = 8000000;  %MSP430 based
+        chargerFreqDivider = 1000000;
 
    end
 
@@ -161,8 +162,7 @@ classdef NNPCHARGER < NNPHELPERS
         function setChargerClock(NNP)
             %SETCHARGERCLOCK Sets the charger clock based on current computer time
             %   
-   
-
+  
             % hex2dec(num2str()) is used to convert from BCD (string) to decimal (number)
             % to send data back to the RTC over the USB (serial)
             t = datetime;        %get current time

@@ -145,6 +145,7 @@ classdef NNPCORE < handle
             
             if length(payload)>252
                 NNP.lastError = 'Outgoing Payload too long';
+                return
             end
             if NNP.mutexAP == true
                 NNP.lastError = 'AP access denied';
@@ -173,7 +174,7 @@ classdef NNPCORE < handle
                     elseif resp(2) == 11 %0x0B
                         NNP.lastError = 'Invalid packet length';
                     else
-                        NNP.lastError = ['Unknown: ', num2str(resp(2),' %02X')]
+                        NNP.lastError = ['Unknown: ', num2str(resp(2),' %02X')];
                     end
                 elseif NNP.verbose > 0
                     disp(['Bad Response from Access Point: ' num2str(resp', ' %02X')]);
@@ -286,7 +287,7 @@ classdef NNPCORE < handle
                     case {'rxTimeout', 'RXTimeOut', 'rxtimeout','rxTimeOut', 'timeout', 'Timeout'}    
                         settingsIn.rxTimeout = varargin{i+1};
                     case {'retries', 'Retries'}
-                        settingsIn.retries = varargin{i+1};
+                        settingsIn.retries = varargin{i+1}; 
                     case {'save', 'Save', 'flash', 'Flash'}
                         save = varargin{i+1};
                     otherwise
@@ -438,7 +439,7 @@ classdef NNPCORE < handle
                 elseif payload(1)~= protocol || payload(2)~=counter || payload(3)~=netID || payload(4)~=node ||...
                     payload(5)~=data(1) || payload(6)~=data(2) || payload(7)~=data(3) %OD Index LB, HB, Subindex
                     if NNP.verbose > 0
-                        disp(['PM response does not echo request: ' num2str(paylaod(1:end-2), ' %02X')])
+                        disp(['PM response does not echo request: ' num2str(payload(1:end-2), ' %02X')])
                     end
                     errOut = 6;
                     NNP.lastError = 'PM response does not echo request';
@@ -998,8 +999,13 @@ classdef NNPCORE < handle
             fid = fopen(fileOut, 'w+');  %open or create file for writing and discard existing contents 
         end
 
-        if strcmp(len, 'all')
-            len = NNP.getLogCursor();
+        if strcmp(len, 'all') 
+            switch file
+                case 'Log'
+                    len = NNP.getLogCursor();
+                case 'OD Restore'
+                    len = 1024;
+            end
             if isempty(len)
                 error('len could not be determined')
             elseif len == 0
@@ -1057,7 +1063,7 @@ classdef NNPCORE < handle
                         %binary file, no formatting
                         fwrite(fid, dataFile);
                     case 3
-                        %up to 16 bytes per line.  Note only woks if msgsize is intefer multiple of 16
+                        %up to 16 bytes per line.  Note only woks if msgsize is integer multiple of 16
                         fprintf(fid, '%02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X\n', dataFile);
                 end
             else
@@ -1068,7 +1074,7 @@ classdef NNPCORE < handle
             address = address + uint32(n);
             
             
-            pause(0.01)
+            %pause(0.001)
         end
 
         %close(h);
@@ -1117,7 +1123,7 @@ classdef NNPCORE < handle
                     disableWOR = false;
                     if nargin < 7
                         fastMode = false;
-                        disableWOR = true;
+                        disableWOR = false;
                         if nargin < 6
                             print = false;
                             if nargin < 5
