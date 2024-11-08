@@ -78,12 +78,21 @@ classdef NNPCORE < handle
         function flushInput(NNP) 
         % FLUSHINPUT - Clears any bytes available in the port buffer
             %disp(['Bytes available:' num2str(NNP.port.NumBytesAvailable)])    
-            if NNP.port.NumBytesAvailable
-                buf = NNP.tryread(NNP.port.NumBytesAvailable);
-                if NNP.verbose > 0
-                    fprintf('\nFlush Input clearing: ');
-                    fprintf('%02X ', buf);
-                    fprintf('\n')
+            for i=1:2
+                try
+                    if NNP.port.NumBytesAvailable
+                        buf = NNP.tryread(NNP.port.NumBytesAvailable);
+                    
+                        if NNP.verbose > 0
+                            fprintf('\nFlush Input clearing: ');
+                            fprintf('%02X ', buf);
+                            fprintf('\n')
+                        end
+                    end
+                    break;
+                 catch
+                    fprintf('\nNNP Port Refreshed - Port may have been unplugged');
+                    NNP.refresh;
                 end
             end
         end
@@ -177,7 +186,7 @@ classdef NNPCORE < handle
                         NNP.lastError = ['Unknown: ', num2str(resp(2),' %02X')];
                     end
                 elseif NNP.verbose > 0
-                    disp(['Bad Response from Access Point: ' num2str(resp', ' %02X')]);
+                    disp(['Bad Response from Access Point: ' num2str(reshape(resp, 1, []), ' %02X')]);
                     NNP.lastError = 'Bad Response';
                 end
             else

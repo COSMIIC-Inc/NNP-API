@@ -13,7 +13,15 @@ classdef NNPCHARGER < NNPHELPERS
             %CONVERTADCTOTEMP converts ADC reading to temperature in Celsius
            x = [23798	23483	23163	22839	22511	22179	21844	21506	21164	20821	20475	20127	19778	19427	19076	18725	18373	18021	17670	17320	16971	16623	16278	15933	15592	15253	14915	14586	14256	13931	13609	13291	12977	12668	12363	12063	11764	11473	11190	10909	10634];
            v = [10	11	12	13	14	15	16	17	18	19	20	21	22	23	24	25	26	27	28	29	30	31	32	33	34	35	36	37	38	39	40	41	42	43	44	45	46	47	48	49	50];
-           out = interp1(x,v,in);
+           if in>23798
+               out = -Inf;
+               fprintf('Thermistor below minimum temperature: likely open circuit')
+           elseif in<10634
+               out = Inf;
+               fprintf('Thermistor above maximum temperature')
+           else
+               out = interp1(x,v,in);
+           end
        end
 
        function startCoil(NNP)
@@ -46,13 +54,28 @@ classdef NNPCHARGER < NNPHELPERS
        end
 
 
-        function out = getChargerVoltage(NNP)
-            %GETCHARGERVOLTAGE Read Coil Drive Battery Voltage
+       function [voltage, current] = getChargerPower(NNP)
+            %GETCHARGERPOWER Read Charger System Direct Voltage and Current in V and A
             %   Reads the Supply Voltage to the DC/DC converter ~12V on Power Supply or Battery Voltage
-            out = [];
-            payload = NNP.transmitAP(87);
-            if length(payload) >= 2 
-                out = double(typecast(uint8([payload(1), payload(2)]), 'uint16'))/4096*2.5*5;
+            current = [];
+            voltage= [];
+            payload = double(NNP.transmitAP(87));
+            if length(payload) >= 4 
+                word = payload(1:2:end)*256+payload(2:2:end);
+                current = double(typecast(uint16(word(1)), 'int16'))*0.000250; %in A 2.5uV/LSB across 0.01ohm I=V/R 
+                voltage = word(2)*1.6/1000;
+            end
+       end
+
+        function [voltage, current] = getCoilPower(NNP)
+            %GETCOILPOWER Read Coil Drive Direct Voltage and Current in V and A
+            current = [];
+            voltage= [];
+            payload = double(NNP.transmitAP(86));
+            if length(payload) >= 4 
+                word = payload(1:2:end)*256+payload(2:2:end);
+                current = -double(typecast(uint16(word(1)), 'int16'))*0.000250; %in A 2.5uV/LSB across 0.01ohm I=V/R 
+                voltage = word(2)*1.6/1000;
             end
         end
 
@@ -65,26 +88,18 @@ classdef NNPCHARGER < NNPHELPERS
             end
         end
 
-        function out = getChargerCurrent(NNP)
-            %GETCHARGERCURRENT Read Coil Drive Direct Current in Amps
-            out = [];
-            payload = NNP.transmitAP(86);
-            if length(payload) >= 2 
-                out = double(typecast(uint8([payload(1), payload(2)]), 'uint16'))/4096*2.5;
-            end
-        end
 
         function out = setChargerCoilFreq(NNP,  value)
             %SETCHARGERCOILFREQ Write Coil Drive Frequency in Hz
        
-           periodTicks = round(NNP.chargerFreqDivider/value);
-           periodTicks = min(periodTicks, 65535);
+           periodTicks = round(10^9/value);
+           periodTicks = min(periodTicks, 2^32);
            periodTicks = max(periodTicks, 1);
 
-           bytes = typecast(uint16(periodTicks), 'uint8');
+           bytes = typecast(uint32(periodTicks), 'uint8');
            payload = NNP.transmitAP(82, bytes);
-           if length(payload) >= 2 
-               out = NNP.chargerFreqDivider/double(typecast(uint8([payload(1), payload(2)]), 'uint16'));
+           if length(payload) == 4 
+               out = NNP.chargerFreqDivider/double(typecast(uint8(payload), 'uint32'));
            end
         end
 
@@ -97,7 +112,26 @@ classdef NNPCHARGER < NNPHELPERS
                 out = NNP.chargerFreqDivider/double(typecast(uint8([payload(1), payload(2)]), 'uint16'));
             end
         end
+    
+        function out = playTones(NNP, notes, durations)
+            %PLAYTONES notes in Hz, durations in ms
+            out = [];
+            if length(notes)>16
+                disp('too many notes')
+                return
+            end
+            if length(notes) ~= length (durations)
+                disp('notelengths array should match motes array')
+                return
+            end
+            n = length(notes);
+            noteperiods = uint16(reshape(round(1./notes*1000000), 1, []));
+            notelengths = uint16(reshape(durations, 1, []));
+            A = reshape([noteperiods; notelengths], 1, n*2);
+            B = typecast(swapbytes(A), 'uint8');
+            out = NNP.transmitAP(hex2dec('42'), [n B]);
 
+        end
 
 
         function out = setChargerAudioFreq(NNP,  value)
@@ -136,6 +170,10 @@ classdef NNPCHARGER < NNPHELPERS
             end
         end
 
+        function out = setChargerLEDs(NNP, red, yel, grn)
+            %SETCHARGERLEDS control LEDs on charger box (1 = on, 0=off, other = leave as is)
+            out = NNP.transmitAP(hex2dec('3F'), [red grn yel]);
+        end
         function [out, t] = getChargerClock(NNP)
             %GETCHARGERCLOCK Read Coil Drive Real-time Clock
             %   
@@ -159,14 +197,16 @@ classdef NNPCHARGER < NNPHELPERS
             
         end
 
-        function setChargerClock(NNP)
-            %SETCHARGERCLOCK Sets the charger clock based on current computer time
+        function setChargerClock(NNP, t)
+            %SETCHARGERCLOCK Sets the charger clock based on current computer time or datetime, t, if provided
             %   
   
             % hex2dec(num2str()) is used to convert from BCD (string) to decimal (number)
             % to send data back to the RTC over the USB (serial)
-            t = datetime;        %get current time
-           
+            if nargin<2 || isempty(t)
+                t = datetime;        %get current time
+            end
+            
             % Calculate decimal vales to send back
             payloadTX = [hex2dec(num2str(round(second(t)))),...
                          hex2dec(num2str(minute(t))), ...
@@ -201,7 +241,11 @@ classdef NNPCHARGER < NNPHELPERS
             % unit16 is reverse endianness of other uint16??
             out = [];
             payload = NNP.transmitAP(120);
-            if length(payload) >= 2 
+            %MSB, LSB, configReg
+            if length(payload) >= 3 
+                if payload(3) ~=28
+                 fprintf('\nThermistor A/D may not be configured as expected')    
+                end
                 out =  NNP.convertADCtoCelsius(double(typecast(uint8([payload(2), payload(1)]), 'uint16')));
             end
        end
@@ -213,18 +257,35 @@ classdef NNPCHARGER < NNPHELPERS
             % unit16 is reverse endianness of other uint16??
             out = [];
             payload = NNP.transmitAP(121);
-            if length(payload) >= 2 
+            if length(payload) >= 3
+                if payload(3) ~=28
+                    fprintf('\nThermistor A/D may not be configured as expected')   
+                end
                 out = NNP.convertADCtoCelsius(double(typecast(uint8([payload(2), payload(1)]), 'uint16')));
             end
         end
 
-        function out = setChargerDisplay(NNP,  str1, str2)
+        function out = setChargerDisplay(NNP,  clr, str1, str2, str3, str4)
             %SETCHARGERDISPLAY set the charger display with strings 
             %        to only update line 1, do not include str2 or set it to []
             %        to only update line 2, set str1 = []
-            if nargin<3
-                str2 = [];
+            if nargin<6
+                str4 = [];
+                if nargin<5
+                    str3 = [];
+                    if nargin<4
+                        str2 = [];
+                        if nargin<3
+                            str1 = [];
+                            if nargin<2
+                                clr = 1;
+                            end
+                        end
+                    end
+                end
             end
+            
+            
             %convert strings to char arrays
             if isstring(str1)
                 str1 = char(str1);
@@ -232,33 +293,45 @@ classdef NNPCHARGER < NNPHELPERS
             if isstring(str2)
                 str2 = char(str2);
             end
-            
-            
+            if isstring(str3)
+                str3 = char(str3);
+            end
+            if isstring(str4)
+                str4 = char(str4);
+            end
             cmd = 109;
-            if length(str1)>=20
-                strOut = [str1(1:20) 0];  %null terminated
-            elseif ~isempty(str1)
-                strOut = [ones(1,20)*double(uint8(' ')) 0]; %spaces and null terminated
-                strOut(1:length(str1))=str1; 
-            else
-                strOut = [];
-                cmd = 111;
-            end
-            if length(str2)>=20
-                strOut = [strOut str2(1:20) 0];
-            elseif ~isempty(str2)
-                str2_pad = [ones(1,20)*double(uint8(' ')) 0];
-                str2_pad(1:length(str2))=str2;
-                strOut = [strOut str2_pad]; 
-            else
-                if isempty(strOut)
-                    return %no update
-                else
-                    cmd = 110;
-                end
-            end
-  
-            out = NNP.transmitAP(cmd, uint8(strOut)); %is there an output?
+
+
+           
+
+              
+            out = NNP.transmitAP(cmd, uint8([clr, length(str1), str1 ,length(str2), str2, length(str3), str3, length(str4), str4])); %is there an output?
+            
+%             cmd = 109;
+%             if length(str1)>=20
+%                 strOut = [str1(1:20) 0];  %null terminated
+%             elseif ~isempty(str1)
+%                 strOut = [ones(1,20)*double(uint8(' ')) 0]; %spaces and null terminated
+%                 strOut(1:length(str1))=str1; 
+%             else
+%                 strOut = [];
+%                 cmd = 111;
+%             end
+%             if length(str2)>=20
+%                 strOut = [strOut str2(1:20) 0];
+%             elseif ~isempty(str2)
+%                 str2_pad = [ones(1,20)*double(uint8(' ')) 0];
+%                 str2_pad(1:length(str2))=str2;
+%                 strOut = [strOut str2_pad]; 
+%             else
+%                 if isempty(strOut)
+%                     return %no update
+%                 else
+%                     cmd = 110;
+%                 end
+%             end
+%   
+%             out = NNP.transmitAP(cmd, uint8(strOut)); %is there an output?
                
         end
 
@@ -279,44 +352,11 @@ classdef NNPCHARGER < NNPHELPERS
 
            bytes = typecast(uint16(setting), 'uint8');
            payload = NNP.transmitAP(100, bytes);
-           settingout = double(typecast(payload, 'uint16'));
+           settingout = double(typecast(bytes, 'uint16'));
            out = (0.5645*settingout+45)*(ISET+1)/(0.2256*1000);
         end
 
-        function setChargerLEDs(NNP,  red, yel, grn)
-        %SETCHARGERLEDs Sets the LED values
-        % 0:turns off LED, 1:turns on LED, otherwise LED remains same
-            if nargin<3
-                grn = [];
-            end
-            if nargin<2
-                yel = [];
-            end
-
-            if ~isempty(red)
-                if red == 1
-                    NNP.transmitAP(101);
-                elseif red == 0
-                    NNP.transmitAP(102);
-                end
-            end
-
-            if ~isempty(yel)
-                if yel == 1
-                    NNP.transmitAP(103);
-                elseif yel == 0 
-                    NNP.transmitAP(104);
-                end
-            end
-
-            if ~isempty(grn)
-                if grn == 1
-                    NNP.transmitAP(105);
-                elseif grn == 0 
-                    NNP.transmitAP(106);
-                end
-            end
-        end
+        
 
         function setCoilLED(NNP, red, green, blue)
             %SETCOILLED sets tricolor LED

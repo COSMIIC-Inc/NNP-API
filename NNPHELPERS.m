@@ -215,7 +215,9 @@ classdef NNPHELPERS < NNPCORE
                 power = [];
             else
                 batV = [bat( 7)+bat( 8)*256, bat( 9)+bat(10)*256, bat(11)+bat(12)*256]; %in mV
+                batV(batV==65535) = 0;
                 batI = uint16([bat(15)+bat(16)*256, bat(17)+bat(18)*256, bat(19)+bat(20)*256]);
+                batI(batI==65535) = 0;
                 batI = double(typecast(batI, 'int16'))/10; %in mA
                 power = round(sum(batI.*batV)/1000); %in mW
             end
