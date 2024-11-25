@@ -24,6 +24,7 @@ classdef NNPCORE < handle
     end
     
     methods
+     
         function NNP = NNPCORE(port)                
         % NNPAPI - (constructor) Opens port for Access Point
         % if no port is provided, a selection menu lets user select port
@@ -97,6 +98,10 @@ classdef NNPCORE < handle
             end
         end
         
+        function busy = isBusy(NNP)
+            busy = NNP.mutexAP;
+        end
+
         function refresh(NNP)
         % REFRESH - close and reopen the serial port to correct USB issues
             try
@@ -161,14 +166,11 @@ classdef NNPCORE < handle
                 return
              end
 
-            NNP.mutexAP = true;
-
             NNP.trywrite( uint8([255 cmd length(payload)+3 payload]));
 
             t = tic;
             while NNP.port.NumBytesAvailable < 3 && toc(t)< NNP.timeout
-                %delay loop
-                drawnow; %allow other callbacks to execute
+                %delay loop.  Do not use a pause or drawnow command here so that this function cannot be interrupted 
             end
             if NNP.port.NumBytesAvailable 
                 resp = NNP.tryread(NNP.port.NumBytesAvailable);
@@ -185,18 +187,18 @@ classdef NNPCORE < handle
                     else
                         NNP.lastError = ['Unknown: ', num2str(resp(2),' %02X')];
                     end
-                elseif NNP.verbose > 0
-                    disp(['Bad Response from Access Point: ' num2str(reshape(resp, 1, []), ' %02X')]);
+                else
+                    if NNP.verbose > 0
+                        disp(['Bad Response from Access Point: ' num2str(reshape(resp, 1, []), ' %02X')]);
+                    end
                     NNP.lastError = 'Bad Response';
                 end
             else
                if NNP.verbose > 0
-                disp('No Response from Access Point');   
+                    disp('No Response from Access Point');   
                end
                NNP.lastError = 'USB timeout';
             end
-
-            NNP.mutexAP = false;
         end
 
         
@@ -277,6 +279,7 @@ classdef NNPCORE < handle
             if isempty(settingsIn)
                 success = 0; 
                 settings = [];
+                disp('failed to get radio settings');
                 return;
             end
             save = false;

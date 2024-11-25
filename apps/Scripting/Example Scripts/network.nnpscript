@@ -1,0 +1,64 @@
+% This script gives examples on using network based operands and results
+
+stack uint8 subIndex = 1
+stack uint8 myArray[5]
+const uint8 subIndexTen = 0xA
+define App8 = N7:1f53
+
+stack uint8  Accel[4]
+stack uint8 StimVals[2] = [255 200]
+
+%OD index and subindex are presented in hex (either lower or upper case)
+%Note: 1f53 is for uint8s (250 subindices available)
+%      1f54 is for uint16 (15 subindices available)
+%      1f55 is for uint32 (10 subindices available)
+% PM is node 7!
+
+stack string str1 = "hello"
+stack string str2 = "world"
+stack string strStore = #40
+const uint8 constStimVals[2] = [255 200]
+
+CATMOV str1 " " str2 => strStore
+MOV (uint8)N7:2011.1 => Accel
+MOV !01 02 03 04! => (uint8)N7:2011.1
+MOV !01 02! => (uint8)N1:3212.1
+MOV StimVals => (uint8)N1:3212.1
+MOV StimVals => (uint8)N1:3212.(subIndex)
+MOV constStimVals => (uint8)N1:3212.1
+
+MOV 3 => N7:1f53.1|uint8 %moves 3 into PM OD index 0x1f53, subindex 0x1 (1)
+MOV 4 => (uint8)N7:1f53.1 %moves 4 into PM OD index 0x1f53, subindex 0x1 (1)
+
+MOV !05 06! => (uint8)N7:1f53.1^2 %moves 4 into PM OD index 0x1f53, subindex 0x1 (1)
+MOV !07 08! => N7:1f53.1|uint8^2 %moves 4 into PM OD index 0x1f53, subindex 0x1 (1)
+MOV !09 0A! => N7:1f53.1^2|uint8 %moves 4 into PM OD index 0x1f53, subindex 0x1 (1)
+MOV !0B 0C! => N7:1f53.(subIndex)^2|uint8 %moves 4 into PM OD index 0x1f53, subindex 0x1 (1)
+
+MOV 3 => N7:1f53.1|uint8 %moves 3 into PM OD index 0x1f53, subindex 0x1 (1)
+MOV 4 => N7:1f53.1 %moves 4 same as above, but assembler will indicate warning that type is not specified (defaults to uint8)
+MOV 5 => N7:1F53.01|uint8 %moves 5 same as above
+MOV 6 => N7:1F53.001|uint8 %assembler errors because subindex must be 1 or 2 digits
+MOV 7 => N7:1f53.10|uint8 %moves 7 into PM OD index 0x1f53, subindex 0x10 (16)
+
+%VARIABLE SUBINDICES
+MOV 8 => N7:1F53.(subIndex)|uint8 %moves 8 into variable subIndex (must be a numeric type) of 1f53
+MOV 9 => N7:1F53.(subIndexTen)|uint8 %moves 9 into constant subIndexTen (0xA, 10)
+
+%CASTING OF DATA INTO OD
+MOV 10 => N7:1f54.1|uint16 
+%MOV 11 => N7:1f54.1|uint8 %not enough bytes, copy will fail at runtime
+MOV 258 => N7:1f53.1|uint8 %rolls over at 255, so value is 2 (i.e. low byte is kept)
+
+%Using Defines 
+MOV 3 => App8.1|uint8
+MOV 4 => App8.2|uint8
+ADD App8.1|uint8  App8.2|uint8 => App8.3|uint8
+
+%Multiple Subindices
+MOV App8.1|uint8^5 => myArray
+VECADD myArray 2 => myArray
+MOV myArray => App8.1|uint8^5
+
+NOP %included so can see output of last line
+

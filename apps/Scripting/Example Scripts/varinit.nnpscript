@@ -1,0 +1,35 @@
+stack uint8 array[4] = [1 2 0x 3 4]
+stack uint8 arrayH[6] = [0x11 11 0xAB 0x2 0x123 0x04]
+stack uint8 arrayB[3] = [1000 2000 3000]%my comment
+stack uint8 arrayL[2] = 5
+stack uint16 arrayY[3]
+stack uint8 var = -6
+stack uint8 var2 = 6
+const ba a=!01 02 03 04!
+
+stack string str
+
+string str2 = "abcd"
+
+string "abcd"
+
+MOV array[1] => (uint8)N7:1f53.1
+MOV arrayH[1] => (uint8)N7:1f53.1
+MOV arrayB[1] => (uint8)N7:1f53.1
+MOV arrayL[1] => (uint8)N7:1f53.1
+MOV 0b010 => arrayL[0]
+MOV 0xaf => arrayL[0]
+MOV -50 => arrayL[0]
+MOV var => (uint8)N7:1f53.1
+MOV !01 02 03! => arrayB
+MOV [4 5 6] => arrayB %result is immediate?
+MOV !01 02 03 04! => (uint8)N7:2011.1 
+MOV [(uint8)01 02 03 04] => (uint8)N7:2011.1 %immediate ararys not yet supported by PM?
+MOV [01|uint8 02 03 04] => (uint8)N7:2011.1 %immediate ararys not yet supported by PM?
+MOV [(uint16) 1000 2000 0x400] => arrayY
+%MOV a => (uint8)N7:2011.1 %runtime error - not sure why
+MOV array =>  (uint8)N7:2011.1
+NOP
+
+
+

@@ -1,0 +1,8 @@
+stack uint8 a = 1
+stack uint8 b = 2
+stack uint8 c
+
+
+ADD a          b          => c     %comment
+TDEL 2500
+NOP 

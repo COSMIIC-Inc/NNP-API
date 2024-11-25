@@ -1,0 +1,67 @@
+% Variable declarations must include at least a scope or type
+% Variables are organized in the download variable tables in the order they are used within the script, 
+%   not in the order that they are declared
+% types:
+%    uint8 (default type), int8, uint16, int16, uint32, int32, 
+%    ba (bytearray), string, fixp (fixedpoint, not yet implemented)
+% scope:
+%     stack - (default scope) Stack variables are reinitialized or set to 0 (if no initializer) 
+%               every time the script is run
+%             Each script has 200 bytes available for stack variables
+%    global - Global Variables are persistent (static) between script runs.  Only variable 
+%               assigned to the script are accessible by the script.  
+%             There are 400 global variables available across all 25 scripts.  
+%             All can be reset at once using  NMT_Reset_Global_Vars (0xA7)
+%             Note: To share variables between scripts use the Object Dictionary App Space (1f53-1f57) 
+%     const - Constants cannot change after they are declared
+
+
+stack defaultType  %will include warning that using default type of uint8
+uint8 defaultScope %will include warning that using default scope of stack
+stack uint8 myVar  %default variable type is stack unsigned 8-bit variable.  			  
+uint8 stack myVar2 %type, and scope can be in either order 	 
+stack int16 myNegVar = -1 %16 and 32 bit numbers are LSB ....MSB in RAM 
+stack uint16 myPosVar = 1000 
+stack int8 myNegVar2
+
+stack string myStr = "hello stack" 
+stack string myStorageStr = #50   %initialize empty string with 50 characters (maximum)
+stack string myStorageStr2 = #50   %initialize empty string with 50 characters (maximum)
+global string myGlobStr = "persistent"
+
+stack uint8 myArray[8] = [11 12 13 14 15 16 17 18] 
+stack uint8 myArray2[8] =[0 0 0 0 0 0 0 0]
+stack uint8 myArray3[8] 
+stack uint32 myBigsArray[3] = [100000 200000 300000]
+stack uint8 index = 1
+stack uint32 BigNumber = 0x40000000
+
+MOV myPosVar => N7:1f53.1|uint8
+MOV BigNumber => N7:1f55.1|uint32
+
+VECMOV myArray 2 1 3 => myArray2
+MOV myArray2 => myArray3
+CATMOV "newstring" => myGlobStr
+
+CATMOV myStr ", cruel world" => myStorageStr
+CATMOV myStr myArray => myStorageStr
+CATMOV myStorageStr => myStorageStr2
+MOV myArray[1] => myVar %Array with literal index. Arrays are indexed counting from 0
+MOV 7 => myVar2
+MOV myArray[myVar2] => myVar %Array with variable index. Arrays are indexed counting from 0
+
+MOV myPosVar => myVar
+MOV myVar => myVar2
+
+MOV myNegVar => myNegVar2
+MOV myNegVar => myPosVar
+
+MOV myBigsArray[index] => myVar
+
+%Array with variable index. Will cause runtime error because index is outside the bounds of the array
+%MOV 8 => myVar2
+%MOV myArray[myVar2] => myVar 
+
+
+
+NOP
