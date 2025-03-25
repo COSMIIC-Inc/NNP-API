@@ -4,7 +4,7 @@ classdef NNPCHARGER < NNPHELPERS
 
    properties (Access = public)
         %chargerFreqDivider = 8000000;  %MSP430 based
-        chargerFreqDivider = 1000000;
+        chargerFreqDivider = 1000000000;
 
    end
 
@@ -61,9 +61,11 @@ classdef NNPCHARGER < NNPHELPERS
             voltage= [];
             payload = double(NNP.transmitAP(87));
             if length(payload) >= 4 
-                word = payload(1:2:end)*256+payload(2:2:end);
-                current = double(typecast(uint16(word(1)), 'int16'))*0.000250; %in A 2.5uV/LSB across 0.01ohm I=V/R 
-                voltage = word(2)*1.6/1000;
+                word = payload(2:2:end)*256+payload(1:2:end);
+                current = double(word(1));
+                voltage = double(word(2));
+%                 current = double(typecast(uint16(word(1)), 'int16'))*0.000250; %in A 2.5uV/LSB across 0.01ohm I=V/R 
+%                 voltage = word(2)*1.6/1000;
             end
        end
 
@@ -73,9 +75,11 @@ classdef NNPCHARGER < NNPHELPERS
             voltage= [];
             payload = double(NNP.transmitAP(86));
             if length(payload) >= 4 
-                word = payload(1:2:end)*256+payload(2:2:end);
-                current = -double(typecast(uint16(word(1)), 'int16'))*0.000250; %in A 2.5uV/LSB across 0.01ohm I=V/R 
-                voltage = word(2)*1.6/1000;
+                word = payload(2:2:end)*256+payload(1:2:end);
+                current = double(word(1));
+                voltage = double(word(2));
+%                 current = -double(typecast(uint16(word(1)), 'int16'))*0.000250; %in A 2.5uV/LSB across 0.01ohm I=V/R 
+%                 voltage = word(2)*1.6/1000;
             end
         end
 
@@ -108,8 +112,8 @@ classdef NNPCHARGER < NNPHELPERS
             
             out = [];
             payload = NNP.transmitAP(83);
-            if length(payload) >= 2 
-                out = NNP.chargerFreqDivider/double(typecast(uint8([payload(1), payload(2)]), 'uint16'));
+            if length(payload) == 4 
+                out = NNP.chargerFreqDivider/double(typecast(uint8(payload), 'uint32'));
             end
         end
     
@@ -161,12 +165,12 @@ classdef NNPCHARGER < NNPHELPERS
 
         function out = getChargerTemp(NNP)
             %GETCHARGERTEMP Read Coil Drive Thermistor Temperature in Celsius
-            %  
-            % unit16 is reverse endianness of other uint16??
+
             out = [];
             payload = NNP.transmitAP(88);
-            if length(payload) >= 2 
-                out = NNP.convertADCtoCelsius(double(typecast(uint8([payload(2), payload(1)]), 'uint16')));
+
+            if length(payload) == 2 
+                out = double(typecast(uint8(payload), 'uint16'))/10;
             end
         end
 
@@ -341,10 +345,11 @@ classdef NNPCHARGER < NNPHELPERS
         %  this is the DC input voltage to the Coil Drive
         % currently limits max output to 10V, though DCDC converter allows 20V
         % the function returns the actual setting applied (in Volts)
-        value = max(value, 0.8);
-        value = min(value, 10);  %Maximum value is 20V, but for now limit to 10V max
-        ISET = 3; %INTFB (setting results in 0.0564 default)
-        setting = (round((value*(0.2256/(ISET+1))*1000-45)/0.5645));
+        setting = round(value*1000);
+%         value = max(value, 0.8);
+%         value = min(value, 10);  %Maximum value is 20V, but for now limit to 10V max
+%         ISET = 1; %INTFB (setting results in 0.0564 default)
+%         setting = (round((value*(0.2256/(ISET+1))*1000-45)/0.5645));
         
             if(setting) > 65535
                error('DCDC setting cannot exceed 65535')%
@@ -352,8 +357,9 @@ classdef NNPCHARGER < NNPHELPERS
 
            bytes = typecast(uint16(setting), 'uint8');
            payload = NNP.transmitAP(100, bytes);
-           settingout = double(typecast(bytes, 'uint16'));
-           out = (0.5645*settingout+45)*(ISET+1)/(0.2256*1000);
+           %settingout = double(typecast(bytes, 'uint16'));
+           %out = (0.5645*settingout+45)*(ISET+1)/(0.2256*1000);
+           out=[];
         end
 
         

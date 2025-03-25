@@ -111,6 +111,7 @@ classdef NNPCORE < handle
                 NNP.mutexAP = false;
                 NNP.lastError = [];
             catch
+                NNP.port.Port = OGport;
                 msgbox(sprintf('Failed to refresh Access Point port'));
                 NNP.lastError = 'Serial Port';
             end
@@ -166,6 +167,7 @@ classdef NNPCORE < handle
                 return
              end
 
+            NNP.mutexAP = true;
             NNP.trywrite( uint8([255 cmd length(payload)+3 payload]));
 
             t = tic;
@@ -177,15 +179,15 @@ classdef NNPCORE < handle
                 if resp(1)==255 && length(resp)==resp(3) 
                     if resp(2) == 6
                         response = resp(4:end);
-                        if NNP.verbose == 2
-                            disp(['Response: ' num2str(resp,' %02X')]);
-                        end
                     elseif resp(2) == 13 %0x0D
                         NNP.lastError = 'Radio Timeout';
                     elseif resp(2) == 11 %0x0B
                         NNP.lastError = 'Invalid packet length';
                     else
                         NNP.lastError = ['Unknown: ', num2str(resp(2),' %02X')];
+                    end
+                    if NNP.verbose == 2
+                        disp(['Response: ' num2str(resp,' %02X')]);
                     end
                 else
                     if NNP.verbose > 0
@@ -199,6 +201,7 @@ classdef NNPCORE < handle
                end
                NNP.lastError = 'USB timeout';
             end
+            NNP.mutexAP = false;
         end
 
         
@@ -346,13 +349,13 @@ classdef NNPCORE < handle
                 cmd = 74; %temporary
             end
 
-            payloadTX = [settingsIn.addrAP...
+            payloadTX = uint8([settingsIn.addrAP...
                        settingsIn.addrPM ...
                        settingsIn.chan ...
                        settingsIn.txPower ...
                        settingsIn.worInt...
                        settingsIn.rxTimeout ...
-                       settingsIn.retries];
+                       settingsIn.retries]);
 
             payload = double(NNP.transmitAP(cmd, payloadTX));
             if length(payload) >= 7
@@ -424,7 +427,7 @@ classdef NNPCORE < handle
                  else
                     NNP.LQI = lqiraw;
                      if NNP.verbose > 0
-                        disp(['Bad CRC:' num2str(payload(1:end), ' %02X')]');
+                        disp(['Bad CRC, Payload:' num2str(payload(1:end), ' %02X')]);
                      end
                      errOut = 7;
                      NNP.lastError = 'Bad CRC';

@@ -235,6 +235,12 @@ classdef NNPHELPERS < NNPCORE
         % [ch1, ch2] = GETBPGAINS(NNP, node)
             ch1 = double(NNP.read(node, '3411', 1));
             ch2 = double(NNP.read(node, '3511', 1));
+            if isempty(ch1)
+                ch1 = nan;
+            end
+            if isempty(ch2)
+                ch2 = nan;
+            end
         end
         
         function stacks = checkPMStacks(NNP)
@@ -298,7 +304,7 @@ classdef NNPHELPERS < NNPCORE
         end
         
         function [year, month, day, dow, hour, min, sec] = getTime(NNP)
-            % GETTIME Return node table and other PM status information 
+            % GETTIME Returns time from PM 
             year = [];
             month = [];
             day = [];
@@ -319,7 +325,7 @@ classdef NNPHELPERS < NNPCORE
         end
 
         function success = setTime(NNP)
-            % GETTIME Return node table and other PM status information 
+            % SETTIME sets time on PM based on current computer time
             resp = NNP.nmt(7, '97'); %stop clock
             if resp ~= hex2dec('97')
                 success = false;
