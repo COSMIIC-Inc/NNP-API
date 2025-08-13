@@ -15,12 +15,7 @@ nnp = NNPCHARGER; %choose COM port from drop down list, or specify COM port as a
 %then use functions as in testCharger.m to operate the charger
 e.g. 
 nnp.startCoil; %starts coil with default parameters (5V, 3500 Hz) 
-
 % values are specified and returned in real world values (e.g. Volts, Amps,DegreesC where conversions are done in NNPCHARGER)
-
-type 
-help nnp 
-or 
 
 ## Licensing
 Firmware and software files are licensed to open source users by COSMIIC under the MIT License. Refer to the **[license text](https://mit-license.org/)** to understand your permissions.
